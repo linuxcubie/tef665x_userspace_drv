@@ -24,7 +24,7 @@
 #define TEF665x_IS_EXT_CLK	1	//external clock input
 
 #define High_16bto8b(a)	((u8)((a) >> 8))
-#define Low_16bto8b(a) 	((u8)(a)) 
+#define Low_16bto8b(a) 	((u8)(a))
 #define Convert8bto16b(a)	((ushort)(((ushort)(*(a))) << 8 |((ushort)(*(a+1)))))
 
 const u8 tef665x_patch_cmdTab1[] = {3,	0x1c,0x00,0x00};
@@ -33,9 +33,9 @@ const u8 tef665x_patch_cmdTab3[] = {3,	0x1c,0x00,0x75};
 
 #define DEBUG 1
 
-#ifdef DEBUG
-#define _debug(x, y) printf("function: %s,  %s : %d\n", __FUNCTION__, #x, y) 
-#elif
+#if DEBUG == 1
+#define _debug(x, y) printf("function: %s,  %s : %x\n", __FUNCTION__, #x, y)
+#else
 #define _debug(x, y)
 #endif
 
@@ -47,21 +47,21 @@ int tef665x_set_cmd(int i2c_file_desc, TEF665x_MODULE module, u8 cmd, int len, .
     va_list vArgs;
 
     va_start(vArgs, len);
-		
+
 	buf[0] = module;	//module,	FM/AM/APP
-	buf[1] = cmd;		//cmd,		1,2,10,... 
+	buf[1] = cmd;		//cmd,		1,2,10,...
 	buf[2] = 0x01;	    //index, 	always 1
 
 	for(i = 3; i < len; i++)
 	{
-		temp = va_arg(vArgs,int);	
-		
-		buf[i++] = High_16bto8b(temp);		
-		buf[i] = Low_16bto8b(temp);		
+		temp = va_arg(vArgs,int);
+
+		buf[i++] = High_16bto8b(temp);
+		buf[i] = Low_16bto8b(temp);
 	}
-	
-	va_end(vArgs);  
-	
+
+	va_end(vArgs);
+
 	ret = write(i2c_file_desc, buf, len);
 
 	temp = (ret == len) ? 1 : 0;
@@ -69,14 +69,14 @@ int tef665x_set_cmd(int i2c_file_desc, TEF665x_MODULE module, u8 cmd, int len, .
 	return temp;
 }
 
-int tef665x_get_cmd(int i2c_file_desc, u8 cmd, TEF665x_MODULE module, u8 *receive, int len)
+int tef665x_get_cmd(int i2c_file_desc, TEF665x_MODULE module,u8 cmd, u8 *receive, int len)
 {
 	u8 temp;
 	u8 buf[3];
 	int ret;
 
 	buf[0]= module;		//module,	FM/AM/APP
-	buf[1]= cmd;		//cmd,		1,2,10,... 
+	buf[1]= cmd;		//cmd,		1,2,10,...
 	buf[2]= 1;	        //index, 	always 1
 
 	write(i2c_file_desc,buf , 3);
@@ -84,13 +84,46 @@ int tef665x_get_cmd(int i2c_file_desc, u8 cmd, TEF665x_MODULE module, u8 *receiv
 	ret = read(i2c_file_desc, receive, len);
 	temp = (ret == len) ? 1 : 0;
 	_debug("return value", temp);
-	return temp;	
+	return temp;
 }
+
 
 /*
 module 64 APPL
+cmd 130 Get_Identification
+index
+1 device
+2 hw_version
+3 sw_version
+*/
+int appl_get_identification(int i2c_file_desc)
+{
+    u8 buf[6];
+    int ret;
+
+    ret = tef665x_get_cmd(i2c_file_desc, TEF665X_MODULE_APPL,
+            TEF665X_Cmd_Get_Identification,
+			 buf, sizeof(buf));
+//should be completed for further use
+    if(ret == SET_SUCCESS)
+	{
+		_debug("buf[0]", buf[0]);
+		_debug("buf[1]", buf[1]);
+		_debug("buf[2]", buf[2]);
+		_debug("buf[3]", buf[3]);
+		_debug("buf[4]", buf[4]);
+		_debug("buf[5]", buf[5]);
+		return 1;
+	}
+	_debug("return value", 0);
+	return 0;
+
+
+}
+/*
+module 64 APPL
 cmd 128 Get_Operation_Status | status
-index 
+index
 1 status
 	Device operation status
 	0 = boot state; no command support
@@ -204,46 +237,10 @@ int tef665x_patch_load(int i2c_file_desc, const u8 *bytes, ushort size)
 			return false;
 		}
 	usleep(50);
-	
+
 	_debug("return value", 1);
 	return true;
 }
-
-#if 0
-//static int devTEF665x_Read(struct i2c_client *client, u8 reg,unsigned char * buf,u32 len)
-static int devTEF665x_Read(struct i2c_client *client, u8 reg,unsigned char * buf,u32 len)
-{ 
-	int ret;
-
-	ret = i2c_master_recv(client,buf,len);
-
-	if(ret < 0)
-	{
-		printk("recv command error!!\n");
-		return 0;
-	}
-	
-	return 1;
-}
-
-//static int devTEF665x_Write(struct i2c_client *client,unsigned char * buf,u8 len)
-static int devTEF665x_Write(struct i2c_client *client,unsigned char * buf,u8 len)
-{
-	int ret;
-
-	ret = i2c_master_send(client,buf,len);
-
-	if(ret < 0)static int devTEF665x_Read(struct i2c_client *client, u8 reg,unsigned char * buf,u32 len)
-
-	{
-		printk("sends command error!!\n");
-		return 0;
-	}
-	
-	return 1;unsigned char
-	
-}
-#endif
 
 int tef665x_patch_init(int i2c_file_desc)
 {
@@ -262,42 +259,42 @@ int tef665x_patch_init(int i2c_file_desc)
 		return ret;
 	}
 
-	ret = tef665x_patch_load(i2c_file_desc, pPatchBytes, patchSize); //table1	
+	ret = tef665x_patch_load(i2c_file_desc, pPatchBytes, patchSize); //table1
 	if(!ret)
 	{
 		_debug("3- pPatchBytes load FAILED", ret);
 		return ret;
-	}		
-	
-	ret = tef665x_writeTab(i2c_file_desc, tef665x_patch_cmdTab1); //[ w 1C 0000 ]	
+	}
+
+	ret = tef665x_writeTab(i2c_file_desc, tef665x_patch_cmdTab1); //[ w 1C 0000 ]
 	if(!ret)
 	{
 		_debug("4- tab1 load FAILED", ret);
 		return ret;
-	}	
+	}
 
-	ret = tef665x_writeTab(i2c_file_desc, tef665x_patch_cmdTab3); //[ w 1C 0075 ]	
+	ret = tef665x_writeTab(i2c_file_desc, tef665x_patch_cmdTab3); //[ w 1C 0075 ]
 	if(!ret)
 	{
 		_debug("5- tab3 load FAILED", ret);
 		return ret;
-	}	
+	}
 
-	ret = tef665x_patch_load(i2c_file_desc, pLutBytes, lutSize); //table2	
+	ret = tef665x_patch_load(i2c_file_desc, pLutBytes, lutSize); //table2
 	if(!ret)
 	{
 		_debug("6- pLutBytes load FAILED", ret);
 		return ret;
-	}		
+	}
 
-	ret = tef665x_writeTab(i2c_file_desc, tef665x_patch_cmdTab1); //[ w 1C 0000 ]	
+	ret = tef665x_writeTab(i2c_file_desc, tef665x_patch_cmdTab1); //[ w 1C 0000 ]
 	if(!ret)
 	{
 		_debug("7- tab1 load FAILED", ret);
 		return ret;
-	}	
+	}
 	_debug("patch loaded", ret);
-	return ret;	
+	return ret;
 }
 
 //Command start will bring the device into? idle state�: [ w 14 0001 ]
@@ -306,7 +303,7 @@ int tef665x_start_cmd(int i2c_file_desc)
 
 	int ret;
 	unsigned char  buf[3];
-	
+
 	buf[0] = 0x14;
 	buf[1] = 0;
 	buf[2] = 1;
@@ -329,7 +326,7 @@ int tef665x_boot_state(int i2c_file_desc)
 	{
 		_debug("return true", 1);
 	}
-	else 
+	else
 	{
 		_debug("return value", 0);
 		return 0;
@@ -341,14 +338,14 @@ int tef665x_boot_state(int i2c_file_desc)
 	{
 		_debug("'start cmd'return true", 1);
 	}
-	else 
+	else
 	{
 		_debug("return value", 0);
 		return 0;
 	}
-	
+
 	usleep(50000);
-	
+
 	return ret;
 }
 
@@ -356,7 +353,7 @@ int tef665x_boot_state(int i2c_file_desc)
 module 64 APPL
 cmd 4 Set_ReferenceClock frequency
 
-index 
+index
 1 frequency_high
 	[ 15:0 ]
 	MSB part of the reference clock frequency
@@ -375,7 +372,7 @@ index
 int tef665x_appl_set_referenceClock(uint i2c_file_desc, ushort frequency_high, ushort frequency_low, ushort type)
 {
 	return tef665x_set_cmd(i2c_file_desc, TEF665X_MODULE_APPL,
-			TEF665X_Cmd_Set_ReferenceClock, 
+			TEF665X_Cmd_Set_ReferenceClock,
 			9,
 			frequency_high, frequency_low, type);
 }
@@ -389,7 +386,7 @@ int appl_set_referenceClock(uint i2c_file_desc, uint frequency, bool is_ext_clk)
 module 64 APPL
 cmd 5 Activate mode
 
-index 
+index
 1 mode
 	[ 15:0 ]
 	1 = goto �active� state with operation mode of �radio standby�
@@ -397,7 +394,7 @@ index
 int tef665x_appl_activate(uint i2c_file_desc ,ushort mode)
 {
 	return tef665x_set_cmd(i2c_file_desc, TEF665X_MODULE_APPL,
-			TEF665X_Cmd_Activate, 
+			TEF665X_Cmd_Activate,
 			5,
 			mode);
 }
@@ -411,12 +408,12 @@ int tef665x_idle_state(int i2c_file_desc)
 {
 
 	TEF665x_STATE status;
-	
+
 	//mdelay(50);
 
 	if(SET_SUCCESS == get_operation_status(i2c_file_desc, &status))
 	{
-		_debug("got operation status", 1);	
+		_debug("got operation status", 1);
  	    if(status != eDevTEF665x_Boot_state)
 		{
 			_debug("not in boot status", 1);
@@ -426,7 +423,7 @@ int tef665x_idle_state(int i2c_file_desc)
 				if(SET_SUCCESS == appl_activate(i2c_file_desc))// APPL_Activate mode = 1.[ w 40 05 01 0001 ]
 				{
 					//usleep(100000); //Wait 100 ms
-					_debug("activate succeed", 1);	
+					_debug("activate succeed", 1);
 					return 1;
 				}
 				else
@@ -438,13 +435,13 @@ int tef665x_idle_state(int i2c_file_desc)
 			{
 				_debug("set the clock FAILED", TEF665x_REF_CLK);
 			}
-			
+
 		}
 		else
 		{
 			_debug("did not get operation status", 0);
 		}
-		
+
 	}
 	_debug("return value", 0);
 	return 0;
@@ -463,7 +460,7 @@ int tef665x_para_load(uint i2c_file_desc)
 			break;
 		}
 	}
-	
+
 	_debug("return value", r);
 	return r;
 }
@@ -472,7 +469,7 @@ int tef665x_para_load(uint i2c_file_desc)
 module 32 / 33 FM / AM
 cmd 1 Tune_To mode, frequency
 
-index 
+index
 1 mode
 	[ 15:0 ]
 	tuning actions
@@ -500,7 +497,7 @@ index
 int tef665x_radio_tune_to (uint i2c_file_desc, bool fm, ushort mode,ushort frequency )
 {
 	return tef665x_set_cmd(i2c_file_desc, fm ? TEF665X_MODULE_FM: TEF665X_MODULE_AM,
-			TEF665X_Cmd_Tune_To, 
+			TEF665X_Cmd_Tune_To,
 			( mode <= 5 ) ? 7 : 5,
 			mode, frequency);
 }
@@ -523,7 +520,7 @@ int AM_tune_to(uint i2c_file_desc, AR_TuningAction_t mode,ushort frequency)
 module 48 AUDIO
 cmd 11 Set_Mute mode
 
-index 
+index
 1 mode
 	[ 15:0 ]
 	audio mute
@@ -533,7 +530,7 @@ index
 int tef665x_audio_set_mute(uint i2c_file_desc, ushort mode)
 {
 	int ret = tef665x_set_cmd(i2c_file_desc, TEF665X_MODULE_AUDIO,
-			  TEF665X_Cmd_Set_Mute, 
+			  TEF665X_Cmd_Set_Mute,
 			  5,
 			  mode);
 	if(ret)
@@ -552,7 +549,7 @@ int tef665x_audio_set_mute(uint i2c_file_desc, ushort mode)
 module 48 AUDIO
 cmd 10 Set_Volume volume
 
-index 
+index
 1 volume
 	[ 15:0 ] (signed)
 	audio volume
@@ -583,7 +580,7 @@ int audio_set_volume(uint i2c_file_desc, int vol)
 module 64 APPL
 cmd 1 Set_OperationMode mode
 
-index 
+index
 1 mode
 	[ 15:0 ]
 	device operation mode
@@ -596,7 +593,7 @@ int tef665x_audio_set_operationMode(uint i2c_file_desc, ushort mode)
 {
 	_debug("normal: 0   standby: 1   requested", 1);
 	int ret = tef665x_set_cmd(i2c_file_desc, TEF665X_MODULE_APPL,
-			  TEF665X_Cmd_Set_OperationMode, 
+			  TEF665X_Cmd_Set_OperationMode,
 			  5,
 			  mode);
 	if(ret)
@@ -620,7 +617,7 @@ void radio_powerSwitch(uint i2c_file_desc, bool OnOff)
 
 void radio_modeSwitch(uint i2c_file_desc, bool mode_switch, AR_TuningAction_t mode, ushort frequency)
 {
-	
+
 	if(mode_switch)	//FM
 	{
 		FM_tune_to(i2c_file_desc, mode, frequency);
@@ -631,8 +628,128 @@ void radio_modeSwitch(uint i2c_file_desc, bool mode_switch, AR_TuningAction_t mo
 	}
 }
 
+/*
+module 32 FM
+cmd 81 Set_RDS
+
+index
+1 mode
+	[ 15:0 ]
+	RDS operation mode
+	0 = OFF
+	1 = decoder mode (default), output of RDS groupe data (Block A, B, C, D)
+        from get_rds_status, get_rds_data FM cmd 130/131
+
+2 restart
+    [ 15:0 ]
+    RDS decoder restart
+    0 = no control
+    1 = manual restart, starlooking for new RDS data immidiately
+    2 = automatic restart after tuning (default)
+    3 = flush, empty RDS output buffer.
+
+3 interface
+    [ 15:0 ]
+    0 = no pin interface.
+    2 = data available status output; active low (GPIO feature 'DAVN')
+    4 = legecy 2-wire demodulator data and clock output ('RDDA' and 'RDCL')
+*/
+int tef665x_set_rds(uint i2c_file_desc)
+{
+    return tef665x_set_cmd(i2c_file_desc, TEF665X_MODULE_FM,
+            TEF665X_Cmd_Set_RDS,
+            10,
+            TEF665X_Cmd_Set_RDS_mode, // default
+        	TEF665X_Cmd_Set_RDS_autorestart, // restart after tune
+	        TEF665X_Cmd_Set_RDS_interface // no interface
+            );
+}
+
+/*
+module 32 FM
+cmd 131 get RDS data
+
+index
+1 status
+    [ 15:0 ]
+    FM RDS reception status.
+    [15] = dta availableflag
+        0 = no data
+        1 = data available
+    [14] = data loss flag
+        0 = no data loss
+        1 = previose data not read, replaced by newer data.
+    [13] = data available type
+        0 = group data; continuos operation.
+        1 = first PI data;data with PI code following decoder sync.
+    [12] = groupe type.
+        0 = type A; A-B-C-D group (with PI code in the block A)
+        1 = type B; A-B-C'-D group (with PI code in the block A and C')
+    [ 8:0 ] reserved
+
+2 A_Block
+    [ 15:0 ] = A block data
+
+3 B_Block
+    [ 15:0 ] = B block data
+
+4 C_Block
+    [ 15:0 ] = C block data
+
+5 D_Block
+    [ 15:0 ] = D block data
+
+6 dec error
+    [ 15:0 ]
+    error code determined by decoder
+    [ 15:14 ] = A block error
+    [ 13:12 ] = B block error
+    [ 11:10 ] = C block error
+    [ 9:8 ] = D block error
+    0 = no error found
+    1 = small error, correctable. data is corrected.
+    2 = larg error, correctable. data is corrected.
+    3 = uncorrectable error.
+    [ 7:0 ] = reserved.
+*/
+int tef665x_get_rds_data(uint i2c_file_desc, ushort *data)
+{
+    int ret;
+    u8 buf[12];
+    u8 tmp;
+
+    ret = tef665x_get_cmd(i2c_file_desc, TEF665X_MODULE_FM,
+            TEF665X_Cmd_Get_RDS_Data,
+            buf, sizeof(buf));
+    if(ret == 1) {
+        *data = Convert8bto16b(buf + 2);
+        *(data + 1) = Convert8bto16b(buf + 4);
+        *(data + 2) = Convert8bto16b(buf + 6);
+        *(data + 3) = Convert8bto16b(buf + 8);
+        *(data + 4) = Convert8bto16b(buf + 10);
+    }
+    return ret;
+}
+
+int tef665x_get_rds_status(uint i2c_file_desc, ushort *status)
+{
+    int ret;
+    u8 buf[2];
+
+    ret = tef665x_get_cmd(i2c_file_desc, TEF665X_MODULE_FM,
+            TEF665X_Cmd_Get_RDS_Status,
+            buf, sizeof(buf));
+
+    if(ret == 1){
+        *status = Convert8bto16b(buf);
+    }
+
+    return ret;
+}
+
 int tef665x_wait_active(uint i2c_file_desc)
 {
+    int ret;
 	TEF665x_STATE status;
 	//usleep(50000);
 	if(SET_SUCCESS == appl_get_operation_status(i2c_file_desc, &status))
@@ -641,7 +758,12 @@ int tef665x_wait_active(uint i2c_file_desc)
 		if((status != eDevTEF665x_Boot_state) && (status != eDevTEF665x_Idle_state))
 		{
 			_debug("active status", 1);
-			if(SET_SUCCESS == tef665x_para_load(i2c_file_desc))
+
+            ret = tef665x_set_rds(i2c_file_desc);
+
+			_debug("set_rds return value", ret);
+
+            if(SET_SUCCESS == tef665x_para_load(i2c_file_desc))
 			{
 				_debug("parameters loaded", 1);
 			}
@@ -650,7 +772,7 @@ int tef665x_wait_active(uint i2c_file_desc)
 				_debug("parameters not loaded", 0);
 				return 0;
 			}
-			
+
 			FM_tune_to(i2c_file_desc, eAR_TuningAction_Preset, 9350);// tune to 93.5MHz
 
 			if(SET_SUCCESS == audio_set_mute(i2c_file_desc, 1))//unmute=0
@@ -662,8 +784,8 @@ int tef665x_wait_active(uint i2c_file_desc)
 				_debug("not muted", 0);
 				return 0;
 			}
-			
-			if(SET_SUCCESS == audio_set_volume(i2c_file_desc, -25))//set to -25db
+
+			if(SET_SUCCESS == audio_set_volume(i2c_file_desc, -35))//set to -25db
 			{
 				_debug("set vol to", -25);
 			}
@@ -689,17 +811,21 @@ void tef665x_chip_init(int i2c_file_desc)
 	usleep(200000);
 	if(1 == tef665x_wait_active(i2c_file_desc)) _debug("tef665x_wait_active", 1);
 }
+
 void usage(void)
 {
 	printf("\nUsage: tef665x <AM/FM> frequency in integer: <dddd>\n");
 	printf("example (FM and 93.5MHz): ./tef665x FM 9350\n\n");
 }
 
+
 int main(int argc, char *argv[])
 {
     int fd, t;
 	int band;
 	ushort freq;
+    ushort rds_status;
+    ushort rds_data[5];
 
 	if(argc != 3)
 	{
@@ -714,28 +840,29 @@ int main(int argc, char *argv[])
 		}
 		else if(!strcmp(argv[1], "FM"))
 		{
-			band = 1;	
+			band = 1;
 		}
 		else
 		{
 			usage();
 			return 1;
 		}
-		
+
 		freq = (ushort)strtod(argv[2], NULL);
 		if(freq == 0)
 		{
 			usage();
 			return 1;
-		}		
+		}&
 	}
-	
+
 	fd = open(I2C_DEV, O_RDWR);
 	if(fd < 0)
 	{
 		printf("could not open %s", I2C_DEV);
 		return fd;
 	}
+
 
     t = ioctl(fd, I2C_SLAVE, I2C_ADDRESS);
 	if (t < 0)
@@ -753,14 +880,28 @@ int main(int argc, char *argv[])
 	tef665x_chip_init(fd);
 
 	radio_modeSwitch(fd, band, eAR_TuningAction_Preset, freq);
-	
-	audio_set_mute(fd, 0);
 
-	sleep(10);
+    audio_set_mute(fd, 0);
 
+    for(int i=0; i<20; i++){
+        sleep(2);
+        if(1 == tef665x_get_rds_status(fd, &rds_status))
+        {
+            printf("rds_status = 0x%04x \n", rds_status);
+            ushort tmp = rds_status & 0x8000;
+            if(tmp == 0x8000){
+                tef665x_get_rds_data(fd, rds_data);
+                printf("data blk a = 0x%04x \n", *rds_data);
+                printf("data blk b = 0x%04x \n", *(rds_data+1));
+                printf("data blk c = 0x%04x \n", *(rds_data+2));
+                printf("data blk d = 0x%04x \n", *(rds_data+3));
+                printf("rds error = 0x%04x \n", *(rds_data+4));
+            }
+        }
+    }
 	audio_set_mute(fd, 1);
 
     close(fd);
 
-    return 0;  
+    return 0;
 }
